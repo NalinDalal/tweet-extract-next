@@ -6,20 +6,31 @@ export default function Home() {
   const [url, setUrl] = useState<string>("");
   const [bearer, setBearer] = useState<string>("");
   const [imageSrc, setImageSrc] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleGenerate = async () => {
-    if (!url) return;
-    const params = new URLSearchParams({ url });
-    if (bearer.trim()) params.append("bearer", bearer);
+    if (!url.trim()) return;
+    setLoading(true);
+    setImageSrc(""); // reset old image while loading
 
-    const res = await fetch(`/api/generate?${params.toString()}`);
-    if (!res.ok) {
-      const err = await res.json();
-      alert("Error: " + err.error);
-      return;
+    try {
+      const params = new URLSearchParams({ url });
+      if (bearer.trim()) params.append("bearer", bearer);
+
+      const res = await fetch(`/api/generate?${params.toString()}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.error);
+        return;
+      }
+      const blob = await res.blob();
+      setImageSrc(URL.createObjectURL(blob));
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong.");
+    } finally {
+      setLoading(false);
     }
-    const blob = await res.blob();
-    setImageSrc(URL.createObjectURL(blob));
   };
 
   return (
@@ -44,13 +55,17 @@ export default function Home() {
 
       <button
         onClick={handleGenerate}
-        disabled={!url.trim()}
+        disabled={!url.trim() || loading}
         className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Generate
+        {loading ? "Generating…" : "Generate"}
       </button>
 
-      {imageSrc && (
+      {loading && (
+        <div className="mt-4 animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+      )}
+
+      {imageSrc && !loading && (
         <div className="mt-4">
           <Image
             src={imageSrc}
